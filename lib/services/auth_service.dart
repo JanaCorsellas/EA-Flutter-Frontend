@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../models/user.dart';
 
 class AuthService {
   bool isLoggedIn = false; // Variable para almacenar el estado de autenticación
+  User? currentUser;
 
   static String get _baseUrl {
     if (kIsWeb) {
@@ -33,7 +35,10 @@ class AuthService {
       print("Resposta rebuda amb codi: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final userData = json.decode(response.body);
+        currentUser = User.fromJson(userData); //guardem l'usuari actual
+        isLoggedIn = true;
+        return userData;
       } else {
         return {'error': 'email o contrasenya incorrectes'};
       }
@@ -43,8 +48,54 @@ class AuthService {
     }
   }
 
+  //mètode per actualitzar l'usuari
+  Future<Map<String, dynamic>> updateUser(String id, User updatedUser) async {
+    final url = Uri.parse('$_baseUrl/$id');
+    
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(updatedUser.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        final updatedData = json.decode(response.body);
+        currentUser = updatedUser; // Actualizamos el usuario actual
+        return {'success': true, 'data': updatedData};
+      } else {
+        return {'error': 'Error al actualizar usuario'};
+      }
+    } catch (e) {
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  //mètode per canviar la contrasenya
+  Future<Map<String, dynamic>> changePassword(String id, String newPassword) async {
+    if (currentUser == null) {
+      return {'error': 'No hay usuario conectado'};
+    }
+    
+    try {
+      final updatedUser = User(
+        id: currentUser!.id,
+        name: currentUser!.name,
+        age: currentUser!.age,
+        email: currentUser!.email,
+        password: newPassword,
+      );
+      
+      final result = await updateUser(id, updatedUser);
+      return result;
+    } catch (e) {
+      return {'error': 'Error al cambiar contraseña: $e'};
+    }
+  }
+
   void logout() {
     isLoggedIn = false; // Cambia el estado de autenticación a no autenticado
+    currentUser = null;
     print("Sessió tancada");
   }
 }
