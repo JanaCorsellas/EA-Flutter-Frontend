@@ -21,13 +21,46 @@ class LoginPage extends StatelessWidget {
       return;
     }
 
+    showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
+
+  try {
     final result = await authService.login(email, password);
 
-    if (result.containsKey('error')) {
-      _showError(context, result['error']);
-    } else {
-      context.go('/');
+    // Cierra el indicador de carga
+    if (context.mounted) {
+      Navigator.pop(context);
     }
+
+    if (result.containsKey('error')) {
+      if (context.mounted) {
+        _showError(context, result['error']);
+      }
+    } else {
+      // Verifica que currentUser exista
+      if (authService.currentUser != null) {
+        print("Navegando a la pantalla principal con usuario: ${authService.currentUser?.name}");
+        if (context.mounted) {
+          context.go('/');
+        }
+      } else {
+        if (context.mounted) {
+          _showError(context, 'Error al cargar los datos del usuario');
+        }
+      }
+    }
+  } catch (e) {
+    // Cierra el indicador de carga en caso de error
+    if (context.mounted) {
+      Navigator.pop(context);
+      _showError(context, 'Error de conexión: $e');
+    }
+  }
   }
 
   void _showError(BuildContext context, String message) {

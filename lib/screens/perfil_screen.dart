@@ -11,6 +11,7 @@ class PerfilScreen extends StatelessWidget {
     final authService = AuthService();
     final user = authService.currentUser;
 
+
     return LayoutWrapper(
       title: 'Perfil',
       child: SingleChildScrollView(
@@ -91,7 +92,7 @@ class PerfilScreen extends StatelessWidget {
                             Icons.lock,
                             'Canviar contrasenya',
                             'Actualitzar la contrasenya',
-                            onTap: () => context.go('/change-password'),
+                            onTap: () => context.go('/canviar-contrasenya'),
                           ),
                         ],
                       ),

@@ -5,6 +5,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/user.dart';
 
 class AuthService {
+  static final AuthService _instance = AuthService._internal();
+  
+  factory AuthService() {
+    return _instance;
+  }
+  
+  AuthService._internal();
+  
   bool isLoggedIn = false; // Variable para almacenar el estado de autenticación
   User? currentUser;
 
@@ -21,24 +29,48 @@ class AuthService {
   //login
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$_baseUrl/login');
-
     final body = json.encode({'email': email, 'password': password});
 
     try {
-      print("enviant solicitud post a: $url");
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
 
-      print("Resposta rebuda amb codi: ${response.statusCode}");
-
       if (response.statusCode == 200) {
         final userData = json.decode(response.body);
-        currentUser = User.fromJson(userData); //guardem l'usuari actual
-        isLoggedIn = true;
-        return userData;
+
+        if (userData['id'] != null) {
+
+          // Fem una segona sol·licitud per obtenir els detalls de l'usuari
+          try {
+            final userDetailsUrl = Uri.parse('$_baseUrl/${userData['id']}');
+            final userDetailsResponse = await http.get(userDetailsUrl);
+            
+            if (userDetailsResponse.statusCode == 200) {
+              final userDetails = json.decode(userDetailsResponse.body);
+              
+              // Creem l'objecte User amb les dades rebudes
+              currentUser = User(
+                id: userDetails['_id'],
+                name: userDetails['name'] ?? '',
+                age: userDetails['age'] ?? 0,
+                email: userDetails['email'] ?? '',
+                password: userDetails['password'] ?? ''
+              );
+              
+              isLoggedIn = true;
+              return {'success': true};
+            } else {
+              return {'error': 'No s\'han pogut obtenir els detalls de l\'usuari'};
+            }
+          } catch (e) {
+            return {'error': 'Error al connectar amb el servidor: $e'};
+          }
+        } else {
+          return {'error': 'ID d\'usuari no vàlid'};
+        }
       } else {
         return {'error': 'email o contrasenya incorrectes'};
       }
@@ -61,7 +93,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final updatedData = json.decode(response.body);
-        currentUser = updatedUser; // Actualizamos el usuario actual
+        currentUser = updatedUser; // Actualitzem l'usuari actual
         return {'success': true, 'data': updatedData};
       } else {
         return {'error': 'Error al actualizar usuario'};
